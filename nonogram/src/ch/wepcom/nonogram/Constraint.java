@@ -9,7 +9,7 @@ public class Constraint implements Comparable<Constraint> {
 	String name;
 	String type = "";
 	int index = -1;
-	int length;
+	int length;			// internal length = external length + 2 (i.e. 5+2=7)
 	int sumOfTrueVals = 0;
 	boolean isSelected = false;
 	ArrayList<Boolean> boolVals = null;
@@ -38,11 +38,15 @@ public class Constraint implements Comparable<Constraint> {
 		this.rules = rules;
 		this.length = length+2;
 		
-		this.boolVals = new ArrayList<Boolean>();
-		for (int i = 0; i < this.length; i++) {
-			this.boolVals.add(new Boolean(false));
-		}
 		sumOfTrueVals = 0;
+		if (getSumRemainingRules(-1)+1==this.length){
+			this.boolVals = constructBoolValsFromRules(rules);
+		} else {
+			this.boolVals = new ArrayList<Boolean>();
+			for (int i = 0; i < this.length; i++) {
+				this.boolVals.add(new Boolean(false));
+			}
+		}
 	}
 
 	public Constraint(ArrayList<Constraint> cList) {
@@ -73,9 +77,30 @@ public class Constraint implements Comparable<Constraint> {
 		}
 	}
 	
-//	private void init(String name, String type, int index, ArrayList<Integer>rules, ArrayList<Boolean> boolVals) {
-//		
-//	}
+	private ArrayList<Boolean> constructBoolValsFromRules (ArrayList<Integer>rules) {
+		
+		ArrayList<Boolean>boolVals = new ArrayList<Boolean>();
+		boolVals.add(new Boolean(false));
+		this.sumOfTrueVals = 0;
+		for (int ruleIndex=0; ruleIndex<rules.size(); ruleIndex++) {
+			int rule = rules.get(ruleIndex);
+			for (int j=0; j<rule; j++) {
+				boolVals.add(true);
+				this.sumOfTrueVals++;
+			}
+			boolVals.add(false);
+		}
+		return boolVals;
+		
+	}
+
+	private int getSumRemainingRules(int currentRule) {
+		int result = 0;
+		for (int i=currentRule+1; i<this.rules.size(); i++) {
+			result += this.rules.get(i)+1;
+		}
+		return result;
+	}
 
 	public boolean getBoolVal(int index) {
 		return this.boolVals.get(index);
@@ -114,6 +139,42 @@ public class Constraint implements Comparable<Constraint> {
 
 	public void setSelected(boolean isSelected) {
 		this.isSelected = isSelected;
+	}
+	
+	public int checkConstraintSupportType(Constraint c) {
+		// 0 = unknown
+		// 1 = constraint
+		// 2 = support
+		// 3 = invalid
+		boolean bRow;
+		boolean bCol;
+	
+		if (this.type.equalsIgnoreCase(c.type)) {
+			return 0;
+		} 
+		
+		if (this.type.equalsIgnoreCase("Z")) {
+			// this = row
+			// c = col
+			bRow = this.boolVals.get(c.index).booleanValue();
+			bCol = c.boolVals.get(this.index).booleanValue();
+		} else {
+			// this = col
+			// c = row
+			bRow = c.boolVals.get(this.index).booleanValue();
+			bCol = this.boolVals.get(c.index).booleanValue();
+		}
+		
+		if (this.isSelected && c.isSelected) {
+			// both are selected
+			if (bRow == bCol)	return 2;
+			if (bRow == bCol)	return 3;
+		}
+		else {
+			// none or only one is selected
+			if (bRow != bCol) return 1;
+		}
+		return 0;
 	}
 	
 	public int getFirstFreePosition() {
@@ -200,25 +261,6 @@ public class Constraint implements Comparable<Constraint> {
 		return result;
 	}
 	
-//	public ArrayList<Constraint> getChildren() {
-//		ArrayList<Constraint> result =  new ArrayList<Constraint>();
-//		for (int i=0; i<rules.size(); i++) {
-//			int rule = rules.get(i);
-//			if (i==0) break;
-//			for (int p=0; p<=length-(rule+2); p++) {
-//				int rulePos = findRule(rule);
-//				if (rulePos<0) {
-//					// create children for new rule
-//					if (i+1<rules.size()) {
-//						int newRule = rules.get(i+1);
-//					}
-//				} else if (rulePos+rule+2<length) {
-//					// create children for new pos of same rule
-//				}
-//			}
-//		}
-//		return result;
-//	}
 	
 	public boolean isEqual(Constraint c) {
 		for (int i=0; i<boolVals.size(); i++) {
@@ -229,14 +271,6 @@ public class Constraint implements Comparable<Constraint> {
 		return true;
 	}
 
-	
-//	@Override
-//	public boolean equals(Object o) {
-//		if (!(o instanceof Constraint)) {
-//			return false;
-//		}
-//		return (this.name.equals(((Constraint)o).name));
-//	}
 	
 	@Override
 	public int hashCode() {
@@ -274,7 +308,6 @@ public class Constraint implements Comparable<Constraint> {
 			}
 		}
 		sbArr.add(out);
-//		out.append(System.getProperty("line.separator"));	
 		for (StringBuffer stringBuffer : sbArr) {
 			for (int i=0; i<2; i++) {
 				System.out.println(stringBuffer);
@@ -283,7 +316,7 @@ public class Constraint implements Comparable<Constraint> {
 	}
 
 	public String toString() {
-		return "("+this.name+","+this.type+","+this.index+"="+boolVals;
+		return "("+this.name+","+this.type+","+this.index+","+this.isSelected+"="+boolVals;
 	}
 
 	@Override

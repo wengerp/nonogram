@@ -6,13 +6,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.TreeSet;
 
 public class Instance {
 
 	ArrayList<ConstraintCollection> rows = new ArrayList<ConstraintCollection>();
 	ArrayList<ConstraintCollection> cols = new ArrayList<ConstraintCollection>();
 	ArrayList<Constraint[]> constraintTuples = new ArrayList<Constraint[]>();
+	ArrayList<Constraint[]> supportTuples = new ArrayList<Constraint[]>();
 	ArrayList<Constraint> constraintsCache = new ArrayList<Constraint>();
 	StringBuffer sbOut = new StringBuffer();
 	boolean constraintCacheacheValid = false;
@@ -34,6 +34,7 @@ public class Instance {
 		for (int c=0; c<rowLength; c++) {
 			this.cols.add(null);
 		}
+		this.constraintCacheacheValid = false;
 	}
 	
 	public synchronized void setCollectionThreaded(ConstraintCollection cc) {
@@ -47,6 +48,7 @@ public class Instance {
 			cols.set(cc.index-1,cc);
 		}
 		nCollections++;
+		this.constraintCacheacheValid = false;
 		busy = false;
 	}
 
@@ -79,9 +81,15 @@ public class Instance {
 		this.constraintCacheacheValid = b;
 	}
 	
-	public ArrayList<Constraint> getConstraints() {
+	public synchronized ArrayList<Constraint> getConstraints() {
 
-		if (!constraintCacheacheValid) {
+		while (busy)	{
+			System.out.println("---getConstraints:waiting---");
+		}
+		busy = true;
+		boolean cacheIsValid = this.constraintCacheacheValid;
+		busy = false;
+		if (!cacheIsValid) {
 //			Set<Constraint> ca = new TreeSet<Constraint>();
 			
 			for (ConstraintCollection cc : rows) {
@@ -90,6 +98,12 @@ public class Instance {
 			for (ConstraintCollection cc : cols) {
 				constraintsCache.addAll(cc.getConstraints());			
 			}
+			while (busy)	{
+				System.out.println("---getConstraints:waiting---");
+			}
+			busy = true;
+			this.constraintCacheacheValid = true;
+			busy = false;
 //			constraintsCache.addAll(ca);
 //			ArrayList<Constraint> ca2 = new ArrayList<Constraint>();
 //			for (Constraint constraint : ca2) {
@@ -122,30 +136,57 @@ public class Instance {
 	}
 	
 
+//	public void calculatetConstraintsTuples() {
+//		
+//		System.out.println("calculatetConstraintsTuples");
+//		for (int r=0; r<rows.size(); r++) {
+//			ConstraintCollection ccRow = rows.get(r);
+//			for (int i=0; i<ccRow.getConstraintsSize(); i++) {
+//				Constraint cRow = ccRow.getConstraints().get(i);
+//				for (int col=0; col<cols.size(); col++) {
+//					ConstraintCollection ccCol = cols.get(col);
+//					for (int k=0; k<ccCol.getConstraintsSize(); k++) {
+//						Constraint cCol = ccCol.getConstraints().get(k);
+//						if (! (isValidTuple(cRow, r, cCol, col))) {
+//							Constraint[] tuple = new Constraint[2];
+//							tuple[0] = cRow;
+//							tuple[1] = cCol;
+//							constraintTuples.add(tuple);
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+
 	public void calculatetConstraintsTuples() {
 		
 		System.out.println("calculatetConstraintsTuples");
-		for (int r=0; r<rows.size(); r++) {
-			ConstraintCollection ccRow = rows.get(r);
-			for (int i=0; i<ccRow.getConstraintsSize(); i++) {
-				Constraint cRow = ccRow.getConstraints().get(i);
-				for (int col=0; col<cols.size(); col++) {
-					ConstraintCollection ccCol = cols.get(col);
-					for (int k=0; k<ccCol.getConstraintsSize(); k++) {
-						Constraint cCol = ccCol.getConstraints().get(k);
-						if (! (isValidTuple(cRow, r, cCol, col))) {
+		for (ConstraintCollection row : rows) {
+			ArrayList<Constraint> rowConstraints = row.getConstraints();
+			for (Constraint cRow : rowConstraints) {
+				for (ConstraintCollection col : cols) {
+					ArrayList<Constraint> colConstraints = col.getConstraints();
+					for (Constraint cCol : colConstraints) {
+						int conSup = cRow.checkConstraintSupportType(cCol);
+						if (conSup == 1) {
 							Constraint[] tuple = new Constraint[2];
 							tuple[0] = cRow;
 							tuple[1] = cCol;
 							constraintTuples.add(tuple);
+						} else if (conSup == 2) {
+							Constraint[] tuple = new Constraint[2];
+							tuple[0] = cRow;
+							tuple[1] = cCol;
+							supportTuples.add(tuple);
+						} else if (conSup == 3) {
+							System.out.println("invalid tuple: ["+cRow+";"+cCol);
 						}
 					}
 				}
 			}
 		}
 	}
-
-
 	
 	private void printVariables() {
 		//     <variable name="Z11" domain="domT"/>
@@ -170,33 +211,7 @@ public class Instance {
 	}
 	
 	
-	
-	
-//	private int printConstraintsTuples(StringBuffer out) {
-//	// <constraint name="C1" arity="2" scope="Z0101 S0102" reference="rel0" />	
-//		out.append(System.getProperty("line.separator"));
-//		int iConstraint = 0;
-//		for (int r=0; r<rows.size(); r++) {
-//			ConstraintCollection ccRow = rows.get(r);
-//			for (int i=0; i<ccRow.getConstraintsSize(); i++) {
-//				Constraint cRow = ccRow.getConstraints().get(i);
-//				for (int col=0; col<cols.size(); col++) {
-//					ConstraintCollection ccCol = cols.get(col);
-//					for (int k=0; k<ccCol.getConstraintsSize(); k++) {
-//						Constraint cCol = ccCol.getConstraints().get(k);
-//						if (! (isValidTuple(cRow, r, cCol, col))) {
-//							iConstraint++;
-//							String cOut = "<constraint name=\"C" + iConstraint + "\" arity=\"2\" scope=\""+ cRow.name + " " + cCol.name + "\" reference=\"rel0\" />";
-//							out.append(cOut);
-//						}
-//					}
-//				}
-//			}
-//		}
-//		out.append(System.getProperty("line.separator"));
-//		return  iConstraint;
-//	}
-	
+
 	private int printConstraintsTuples(StringBuffer out) {
 	// <constraint name="C1" arity="2" scope="Z0101 S0102" reference="rel0" />	
 
@@ -301,13 +316,14 @@ public class Instance {
 		sbOut.append("</constraints>");
 	}
 	
-	private boolean isValidTuple(Constraint cRow, int row, Constraint cSize, int col) {
-		ArrayList<Boolean>bListRow = cRow.getBoolValsExt();
-		ArrayList<Boolean>bListCol = cSize.getBoolValsExt();
-		boolean bRow = bListRow.get(col).booleanValue();
-		boolean bCol = bListCol.get(row).booleanValue();
-		return bRow==bCol;
-	}		
+//	private boolean isValidTuple(Constraint cRow, int row, Constraint cSize, int col) {
+//		ArrayList<Boolean>bListRow = cRow.getBoolValsExt();
+//		ArrayList<Boolean>bListCol = cSize.getBoolValsExt();
+//		boolean bRow = bListRow.get(col).booleanValue();
+//		boolean bCol = bListCol.get(row).booleanValue();
+//		return bRow==bCol;
+//	}		
+
 
 	public void writeCsp() {
 	
