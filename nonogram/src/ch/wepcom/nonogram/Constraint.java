@@ -12,6 +12,7 @@ public class Constraint implements Comparable<Constraint> {
 	int length;			// internal length = external length + 2 (i.e. 5+2=7)
 	int sumOfTrueVals = 0;
 	boolean isSelected = false;
+	boolean isForbidden = false;
 	ArrayList<Boolean> boolVals = null;
 	ArrayList<Integer> rules = null;
 
@@ -141,6 +142,14 @@ public class Constraint implements Comparable<Constraint> {
 		this.isSelected = isSelected;
 	}
 	
+	public boolean isForbidden() {
+		return isForbidden;
+	}
+
+	public void setForbidden(boolean isForbidden ) {
+		this.isForbidden = isForbidden;
+	}
+
 	public int checkConstraintSupportType(Constraint c) {
 		// 0 = unknown
 		// 1 = constraint

@@ -46,7 +46,9 @@ public class ConstraintCollection {
 		int sumAllRules = getSumRemainingRules(-1)+1; 
 		if (sumAllRules==this.length+2) {
 			// only one possibility --> construct directly
-			this.addConstraint(new Constraint(this.name+String.format("%02d",(this.constraints.size()+1)),this.type,this.index,this.rules,this.length));
+			Constraint selectedConstraint = new Constraint(this.name+String.format("%02d",(this.constraints.size()+1)),this.type,this.index,this.rules,this.length);
+			selectedConstraint.setSelected(true);
+			this.addConstraint(selectedConstraint);
 		} else {
 			ArrayList<ArrayList<Constraint>> valueCandidates = new ArrayList<ArrayList<Constraint>>();
 			for (int i=0; i<rules.size(); i++) {

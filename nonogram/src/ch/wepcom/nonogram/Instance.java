@@ -187,7 +187,27 @@ public class Instance {
 			}
 		}
 	}
-	
+
+	public void updateConstraintsState(Constraint c) {
+		
+		if (c.type.equalsIgnoreCase("Z")) {
+			for (ConstraintCollection col : cols) {
+				ArrayList<Constraint> colConstraints = col.getConstraints();
+				for (Constraint cCol : colConstraints) {
+					int conSup = c.checkConstraintSupportType(cCol);
+					if (conSup == 2) {
+						for (Constraint c1 : colConstraints) {
+							if (c1 != cCol) {
+								c1.setForbidden(true);
+							}
+						}
+						return;
+					}
+				}
+			}			
+		}
+	}
+
 	private void printVariables() {
 		//     <variable name="Z11" domain="domT"/>
 
