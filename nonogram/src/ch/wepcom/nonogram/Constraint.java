@@ -15,11 +15,12 @@ public class Constraint implements Comparable<Constraint> {
 	boolean isForbidden = false;
 	ArrayList<Boolean> boolVals = null;
 	ArrayList<Integer> rules = null;
+	ConstraintCollection parent;
 
-	public Constraint(String name, String type, int index, ArrayList<Integer>rules, ArrayList<Boolean> boolVals) {
+	public Constraint(ConstraintCollection parent, String name, String type, int index, ArrayList<Integer>rules, ArrayList<Boolean> boolVals) {
 
 		nConstr++;
-
+		this.parent = parent;
 		this.type = type;
 		this.index = index;
 		this.name = type+String.format("%02d",index)+String.format("%06d",nConstr);
@@ -31,8 +32,9 @@ public class Constraint implements Comparable<Constraint> {
 		}
 	}
 
-	public Constraint(String name, String type, int index, ArrayList<Integer>rules, int length) {
+	public Constraint(ConstraintCollection parent, String name, String type, int index, ArrayList<Integer>rules, int length) {
 		nConstr++;
+		this.parent = parent;
 		this.type = type;
 		this.index = index;
 		this.name = type+String.format("%02d",index)+String.format("%06d",nConstr);
@@ -40,7 +42,8 @@ public class Constraint implements Comparable<Constraint> {
 		this.length = length+2;
 		
 		sumOfTrueVals = 0;
-		if (getSumRemainingRules(-1)+1==this.length){
+		int sumAllRules = getSumRemainingRules(-1)+1;
+		if (sumAllRules==this.length || sumAllRules == 2){
 			this.boolVals = constructBoolValsFromRules(rules);
 		} else {
 			this.boolVals = new ArrayList<Boolean>();
@@ -50,13 +53,14 @@ public class Constraint implements Comparable<Constraint> {
 		}
 	}
 
-	public Constraint(ArrayList<Constraint> cList) {
+	public Constraint(ConstraintCollection parent, ArrayList<Constraint> cList) {
 		nConstr++;
 		
 		if(cList != null && cList.size()>0) {
 			for (int i=0; i<cList.size(); i++) {
 				Constraint c = cList.get(i);
 				if (i==0) {
+					this.parent = parent;
 					this.type = c.type;
 					this.index = c.index;
 					this.name = type+String.format("%02d",index)+String.format("%06d",nConstr);
@@ -85,6 +89,12 @@ public class Constraint implements Comparable<Constraint> {
 		this.sumOfTrueVals = 0;
 		for (int ruleIndex=0; ruleIndex<rules.size(); ruleIndex++) {
 			int rule = rules.get(ruleIndex);
+			if (rule==0) {
+				// no rule for this cc --> set all constraints to false
+				for(int j=0; j<this.length;j++) {
+					boolVals.add(false);
+				}
+			}
 			for (int j=0; j<rule; j++) {
 				boolVals.add(true);
 				this.sumOfTrueVals++;
@@ -151,7 +161,7 @@ public class Constraint implements Comparable<Constraint> {
 	}
 
 	public int checkConstraintSupportType(Constraint c) {
-		// 0 = unknown
+		// 0 = not defined
 		// 1 = constraint
 		// 2 = support
 		// 3 = invalid
@@ -165,25 +175,51 @@ public class Constraint implements Comparable<Constraint> {
 		if (this.type.equalsIgnoreCase("Z")) {
 			// this = row
 			// c = col
+//			ArrayList<Boolean>bListRow = this.getBoolValsExt();
+//			ArrayList<Boolean>bListCol = c.getBoolValsExt();
+//			bRow = bListRow.get(c.index-1).booleanValue();
+//			bCol = bListCol.get(this.index-1).booleanValue();
+
 			bRow = this.boolVals.get(c.index).booleanValue();
 			bCol = c.boolVals.get(this.index).booleanValue();
 		} else {
 			// this = col
 			// c = row
+//			ArrayList<Boolean>bListRow = c.getBoolValsExt();
+//			ArrayList<Boolean>bListCol = this.getBoolValsExt();
+//			bRow = bListRow.get(this.index-1).booleanValue();
+//			bCol = bListCol.get(c.index-1).booleanValue();
+
 			bRow = c.boolVals.get(this.index).booleanValue();
 			bCol = this.boolVals.get(c.index).booleanValue();
 		}
 		
+//		if (bRow != bCol) return 1;
+//		else return 0;
+		
 		if (this.isSelected && c.isSelected) {
 			// both are selected
-			if (bRow == bCol)	return 2;
-			if (bRow == bCol)	return 3;
+			if (bRow == bCol) {
+				return 2; 
+			}
+			else {	
+				return 3;
+			}
+		} else if (this.isSelected || c.isSelected) {
+			// only one is selected
+			if (bRow != bCol) {
+				return 3;
+			} else {
+				return 0;
+			}
+		} else {
+			// none is selected
+			if (bRow != bCol) {
+				return 1;
+			} else {
+				return 0;
+			}
 		}
-		else {
-			// none or only one is selected
-			if (bRow != bCol) return 1;
-		}
-		return 0;
 	}
 	
 	public int getFirstFreePosition() {
@@ -249,6 +285,10 @@ public class Constraint implements Comparable<Constraint> {
 	public boolean isValid() {
 		boolean result = true;
 		
+		if (rules==null) {
+			System.out.println("=== UNEXPECTED SITUIATION:"+this);
+			return false;
+		}
 		int rule = rules.get(0);
 		if (rule>0) {
 			int pos = findRule(rule,0);
@@ -325,7 +365,7 @@ public class Constraint implements Comparable<Constraint> {
 	}
 
 	public String toString() {
-		return "("+this.name+","+this.type+","+this.index+","+this.isSelected+"="+boolVals;
+		return "("+this.name+","+this.type+","+this.index+",iS:"+this.isSelected+",iF:"+this.isForbidden+"="+boolVals;
 	}
 
 	@Override
