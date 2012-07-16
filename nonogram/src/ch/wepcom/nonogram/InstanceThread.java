@@ -21,7 +21,7 @@ public class InstanceThread extends Thread {
 		System.out.println("Starting thread for collection:"+type+(index+1));
 		ConstraintCollection cc = new ConstraintCollection(this.iCallback,type+String.format("%02d", index+1),type, index+1, collectionLength, rules);
 		iCallback.setCollectionThreaded(cc);
-		System.out.println("Finished thread for collection:"+type+(index+1));
+		System.out.println("Finished thread for collection:"+type+(index+1)+" (prio: "+cc.prio+")");
 	}
 
 }

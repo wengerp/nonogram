@@ -5,10 +5,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Instance {
+public class Instance extends Thread {
 
 	ArrayList<ConstraintCollection> rows = new ArrayList<ConstraintCollection>();
 	ArrayList<ConstraintCollection> cols = new ArrayList<ConstraintCollection>();
@@ -39,6 +40,15 @@ public class Instance {
 		this.constraintCacheacheValid = false;
 	}
 	
+	public void run() {
+		for (ConstraintCollection cc : rows) {
+			System.out.println("Starting thread for collection:"+cc.index);
+				cc.createConstraints();
+				setCollectionThreaded(cc);
+			System.out.println("Finished thread for collection:"+type+(index+1)+" (prio: "+cc.prio+")");
+		}
+	}
+
 	public synchronized void setCollectionThreaded(ConstraintCollection cc) {
 		while (busy)	{
 			System.out.println("---setCollectionThreaded---");
@@ -60,6 +70,30 @@ public class Instance {
 		t.start();
 	}
 	
+	public void setRows(ArrayList<int[]>rules) {
+		int index=0;
+		for (int[] rule : rules) {
+			ConstraintCollection cc = new ConstraintCollection(this,"Z"+String.format("%02d", index+1),"Z", index+1, rowLength, rule);
+			rows.set(index,cc);
+			nCollections++;
+			index++;
+		}
+		Collections.sort(rows);
+		this.constraintCacheacheValid = false;			
+	}
+
+	public void setCols(ArrayList<int[]>rules) {
+		int index=0;
+		for (int[] rule : rules) {
+			ConstraintCollection cc = new ConstraintCollection(this,"S"+String.format("%02d", index+1),"S", index+1, colLength, rule);
+			cols.set(index,cc);
+			nCollections++;
+			index++;
+			Collections.sort(rows);
+		}
+		this.constraintCacheacheValid = false;			
+	}
+
 	public void setCol(int index , int[] rules) {
 		InstanceThread t = new InstanceThread(this,index,rules,colLength,"S");
 		t.start();

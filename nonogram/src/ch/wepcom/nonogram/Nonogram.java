@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.util.ArrayList;
 
 
 public class Nonogram {
@@ -16,13 +17,13 @@ public class Nonogram {
 
 // ---------------------------------		
 	
-		int DIMN = 30;	// rows
-		int DIMM = 30;	// cols
-
-		int[][] rowConstraints = { {3,1,1,5},{5,3,8},{2,2,1,2,2,1,9},{1,2,3,7,1},{4,1,1,1,6,2},{6,1,2,3,1},{2,5,2},{2,1,2,5,3},{5,4,2,3,1},{6,6,8},{1,3,7,7},{2,1,3,1,2,2,2},{2,1,2,1,1,1,1},{6,2,2,1,2,2},{5,1,3,1,2,3},{4,6,1,1,1},{3,5,3,1,1,3},{2,16,3,1,1},{2,2,4,2,1,1,5,4},{1,1,14,2,1},{2,5,1,1,4},{1,1,1,5,1,3},{3,9,9},{8,1,1,1,1},{4,3,1,1,1,1},{5,3,1,2,1,1,2},{5,4,1,1,1,4},{4,5,1,1,5},{3,5,3},{3,6,2} };
-		int[][] colConstraints = { {3,3,7},{2,1,3,8},{2,1,3,6,3},{2,2,3,3,3,1,3},{2,1,8,2,2,5},{2,1,2,1,2,2,5},{2,1,8,4,1},{1,1,6,5},{2,4,6,4},{1,16},{4,1,1,1,3},{1,1,1,3,10,3},{3,3,1,1,4,7},{1,1,1,4,2,2,1,7},{3,2,2,1,1,3,2},{1,1,1,1,1,1},{1,5},{1,3,2,1,1,2},{2,2,1,6,5},{3,1,1,1,4,3,2},{3,6,2,1,1,5},{10,1,1,4,2},{11,2,1,1},{8,3,2,3},{5,1,3,1,2,1,3},{4,4,3,2,3},{3,1,1,2,2,7,6},{4,2,3,1,4,3},{2,2,2,2,3},{3,2} };
-
-		int[] solution = {};
+//		int DIMN = 30;	// rows
+//		int DIMM = 30;	// cols
+//
+//		int[][] rowConstraints = { {3,1,1,5},{5,3,8},{2,2,1,2,2,1,9},{1,2,3,7,1},{4,1,1,1,6,2},{6,1,2,3,1},{2,5,2},{2,1,2,5,3},{5,4,2,3,1},{6,6,8},{1,3,7,7},{2,1,3,1,2,2,2},{2,1,2,1,1,1,1},{6,2,2,1,2,2},{5,1,3,1,2,3},{4,6,1,1,1},{3,5,3,1,1,3},{2,16,3,1,1},{2,2,4,2,1,1,5,4},{1,1,14,2,1},{2,5,1,1,4},{1,1,1,5,1,3},{3,9,9},{8,1,1,1,1},{4,3,1,1,1,1},{5,3,1,2,1,1,2},{5,4,1,1,1,4},{4,5,1,1,5},{3,5,3},{3,6,2} };
+//		int[][] colConstraints = { {3,3,7},{2,1,3,8},{2,1,3,6,3},{2,2,3,3,3,1,3},{2,1,8,2,2,5},{2,1,2,1,2,2,5},{2,1,8,4,1},{1,1,6,5},{2,4,6,4},{1,16},{4,1,1,1,3},{1,1,1,3,10,3},{3,3,1,1,4,7},{1,1,1,4,2,2,1,7},{3,2,2,1,1,3,2},{1,1,1,1,1,1},{1,5},{1,3,2,1,1,2},{2,2,1,6,5},{3,1,1,1,4,3,2},{3,6,2,1,1,5},{10,1,1,4,2},{11,2,1,1},{8,3,2,3},{5,1,3,1,2,1,3},{4,4,3,2,3},{3,1,1,2,2,7,6},{4,2,3,1,4,3},{2,2,2,2,3},{3,2} };
+//
+//		int[] solution = {};
 		
 // ---------------------------------		
 
@@ -57,13 +58,13 @@ public class Nonogram {
 		
 // ---------------------------------		
 
-//		int DIMN = 5;	// rows
-//		int DIMM = 5;	// cols
-//
-//		int[][] rowConstraints = { {2,1},{1,1},{1,1,1},{1,1},{2,1} };
-//		int[][] colConstraints = { {1},{2,2},{1,1,1},{1},{1,3} };
-//		
-//		int[] solution = {0,0,1,0,0,0,1,0,0,1,0,0,0,0,1,0,0,0,1,1,1,1,0,1,0,0,1};
+		int DIMN = 5;	// rows
+		int DIMM = 5;	// cols
+
+		int[][] rowConstraints = { {2,1},{1,1},{1,1,1},{1,1},{2,1} };
+		int[][] colConstraints = { {1},{2,2},{1,1,1},{1},{1,3} };
+		
+		int[] solution = {0,0,1,0,0,0,1,0,0,1,0,0,0,0,1,0,0,0,1,1,1,1,0,1,0,0,1};
 		
 //
 //        XXXXXXXX    XXXX    
@@ -82,10 +83,15 @@ public class Nonogram {
 		
 		
 		Instance nono = new Instance(DIMM, DIMN);
+
+		ArrayList<int[]> rows = new ArrayList<int[]>();
+		for (int n=0; n<DIMN; n++) {
+			rows.add(rowConstraints[n]);
+		}
+		nono.setRows(rows);
 		
 //		for (int n=0; n<DIMN; n++) {
 //			nono.setRow(n, rowConstraints[n]);
-////			while(nono.getNumberOfCollections()<n+1) ;
 //		}
 //		while(nono.getNumberOfCollections()<(DIMN)) {
 //			System.out.print("["+nono.getNumberOfCollections()+"]");
@@ -97,7 +103,6 @@ public class Nonogram {
 //		}
 //		for (int m=0; m<DIMM; m++) {
 //			nono.setCol(m, colConstraints[m]);
-////			while(nono.getNumberOfCollections()<m+1) ;
 //		}
 //		while(nono.getNumberOfCollections()<(DIMN+DIMM)) {
 //			System.out.print("["+nono.getNumberOfCollections()+"]");
@@ -109,21 +114,21 @@ public class Nonogram {
 //		}
 
 		
-		for (int n=0; n<DIMN; n++) {
-			nono.setRow(n, rowConstraints[n]);
-			while(nono.getNumberOfCollections()<n+1) ;
-			nono.setCol(DIMN-n-1, colConstraints[DIMN-n-1]);
-			while(nono.getNumberOfCollections()<n+2) ;
-		}
-
-		while(nono.getNumberOfCollections()<(DIMN+DIMM)) {
-			System.out.print("["+nono.getNumberOfCollections()+"]");
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+//		for (int n=0; n<DIMN; n++) {
+//			nono.setRow(n, rowConstraints[n]);
+////			while(nono.getNumberOfCollections()<n+1) ;
+//			nono.setCol(DIMN-n-1, colConstraints[DIMN-n-1]);
+////			while(nono.getNumberOfCollections()<n+2) ;
+//		}
+//
+//		while(nono.getNumberOfCollections()<(DIMN+DIMM)) {
+//			System.out.print("["+nono.getNumberOfCollections()+"]");
+//			try {
+//				Thread.sleep(1000);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//		}
 		
 //		nono.showInstance();
 		nono.calculatetConstraintsTuples();

@@ -2,7 +2,7 @@ package ch.wepcom.nonogram;
 
 import java.util.ArrayList;
 
-public class ConstraintCollection {
+public class ConstraintCollection implements Comparable<ConstraintCollection>{
 
 	String name = "";
 	String type = "";
@@ -13,6 +13,7 @@ public class ConstraintCollection {
 	ArrayList<Constraint> candidates = new ArrayList<Constraint>();
 	boolean busy = false;
 	Instance instance;
+	double prio = 0.0;
 	
 	public ConstraintCollection(Instance instance, String name, String type, int index, int length, int[] rules) {
 		this.instance = instance;
@@ -23,12 +24,18 @@ public class ConstraintCollection {
 		this.rules = new ArrayList<Integer>();
 		for (int i : rules) {
 			this.rules.add(new Integer(i));
+			this.prio += i;
 		}
-		createConstraints();
+		if(this.prio>0) {
+			this.prio = this.prio/rules.length;
+		} else {
+			this.prio = index;
+		}
+//		createConstraints();
 	}
 	
 	public String toString() {
-		return "["+this.name+";"+length+";"+rules+";"+getConstraintsSize()+";"+constraints;
+		return "["+this.name+";"+length+";"+rules+";"+getConstraintsSize()+";"+prio+";"+constraints;
 	}
 
 	public void addConstraint(Constraint c) {
@@ -47,7 +54,7 @@ public class ConstraintCollection {
 //		this.instance.updateConstraintsState(c);
 	}
 	
-	private void createConstraints() {
+	public void createConstraints() {
 
 		int sumProcessedRules = 0;
 		int sumAllRules = getSumRemainingRules(-1)+1; 
@@ -220,5 +227,44 @@ public class ConstraintCollection {
 	
 	public int getConstraintsSize() {
 		return this.constraints.size();
+	}
+
+	@Override
+	public int compareTo(ConstraintCollection cc) {
+		return ((new Double(this.prio)).compareTo(new Double(cc.prio)) *-1);
+		
+		//		if (cc == null) 
+//			return -1;
+//		if (this.prio>cc.prio)
+//			return -1;
+//		else if (cc.prio>this.prio)
+//			return 1;
+//		else
+//			return 0;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof ConstraintCollection))
+			return false;
+		ConstraintCollection other = (ConstraintCollection) obj;
+		if (name == null) {
+			if (other.name != null)
+				return false;
+		} else if (!name.equals(other.name))
+			return false;
+		return true;
 	}
 }
