@@ -1,8 +1,10 @@
 package ch.wepcom.nonogram;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,12 +15,11 @@ public class Instance extends Thread {
 
 	ArrayList<ConstraintCollection> rows = new ArrayList<ConstraintCollection>();
 	ArrayList<ConstraintCollection> cols = new ArrayList<ConstraintCollection>();
-	ArrayList<Constraint[]> constraintTuples = new ArrayList<Constraint[]>();
-	ArrayList<Constraint[]> supportTuples = new ArrayList<Constraint[]>();
 	ArrayList<Constraint> constraintsCache = new ArrayList<Constraint>();
-//	StringBuffer sbOut = new StringBuffer();
+	int numberOfConstraintTuples = 0;
+	int numberOfSupportsTuples = 0;
 	
-	boolean constraintCacheacheValid = false;
+	boolean constraintCacheValid = false;
 	
 	int[] solution;
 	
@@ -26,7 +27,6 @@ public class Instance extends Thread {
 	int colLength = 0;
 	
 	int nCollections = 0;
-	boolean busy = false;
 	
 	public Instance(int rowLength, int colLength) {
 		this.rowLength = rowLength;
@@ -37,40 +37,51 @@ public class Instance extends Thread {
 		for (int c=0; c<rowLength; c++) {
 			this.cols.add(null);
 		}
-		this.constraintCacheacheValid = false;
+		this.constraintCacheValid = false;
 	}
 	
 	public void run() {
+		ArrayList<CollectionThread> threads = null;
+		
+		int i=0;
 		for (ConstraintCollection cc : rows) {
-			System.out.println("Starting thread for collection:"+cc.index);
+				threads = new ArrayList<CollectionThread>();
+				CollectionThread ct = new CollectionThread(this,cc,i);
+				threads.add(ct);
+				ct.start();
+				i++;
+		}
+		for (CollectionThread collectionThread : threads) {
+			try {
+				collectionThread.join();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		i=0;
+		for (ConstraintCollection cc : cols) {
+			System.out.println("Starting thread for col collection:"+cc.index);
 				cc.createConstraints();
-				setCollectionThreaded(cc);
-			System.out.println("Finished thread for collection:"+type+(index+1)+" (prio: "+cc.prio+")");
+				setCollectionThreaded(i,cc);
+				i++;
+			System.out.println("Finished thread for col collection:"+cc.index+" (prio: "+cc.prio+")");
 		}
 	}
 
-	public synchronized void setCollectionThreaded(ConstraintCollection cc) {
-		while (busy)	{
-			System.out.println("---setCollectionThreaded---");
-		}
-		busy = true;
+	public  synchronized void setCollectionThreaded(int position, ConstraintCollection cc) {
 		if (cc.type.equalsIgnoreCase("Z")) {
-			rows.set(cc.index-1,cc);
+			rows.set(position,cc);
 		} else {
-			cols.set(cc.index-1,cc);
+			cols.set(position,cc);
 		}
 		nCollections++;
-		this.constraintCacheacheValid = false;
-		busy = false;
+		this.constraintCacheValid = false;
 	}
 
-	public void setRow(int index, int[] rules) {
-
-		InstanceThread t = new InstanceThread(this,index,rules,rowLength,"Z");
-		t.start();
-	}
 	
-	public void setRows(ArrayList<int[]>rules) {
+	public synchronized void setRows(ArrayList<int[]>rules) {
 		int index=0;
 		for (int[] rule : rules) {
 			ConstraintCollection cc = new ConstraintCollection(this,"Z"+String.format("%02d", index+1),"Z", index+1, rowLength, rule);
@@ -79,54 +90,47 @@ public class Instance extends Thread {
 			index++;
 		}
 		Collections.sort(rows);
-		this.constraintCacheacheValid = false;			
+		this.constraintCacheValid = false;			
 	}
 
-	public void setCols(ArrayList<int[]>rules) {
+	public synchronized void setCols(ArrayList<int[]>rules) {
 		int index=0;
 		for (int[] rule : rules) {
 			ConstraintCollection cc = new ConstraintCollection(this,"S"+String.format("%02d", index+1),"S", index+1, colLength, rule);
 			cols.set(index,cc);
 			nCollections++;
 			index++;
-			Collections.sort(rows);
 		}
-		this.constraintCacheacheValid = false;			
+		Collections.sort(cols);
+		this.constraintCacheValid = false;			
 	}
 
-	public void setCol(int index , int[] rules) {
-		InstanceThread t = new InstanceThread(this,index,rules,colLength,"S");
-		t.start();
-	}
 
 	public synchronized int getNumberOfCollections() {
-		while (busy)	{
-			System.out.println("---getNumberOfCollections:waiting---");
-		}
-		busy = true;
 		int n = nCollections;
-		busy = false;
 		return n;
 	}
 	
-	public void setSolution(int[] b) {
+	public synchronized void setSolution(int[] b) {
 		this.solution = b;
 	}
 
-	public void setConstraintCacheValid(boolean b) {
-		this.constraintCacheacheValid = b;
+	public synchronized void setConstraintCacheValid(boolean b) {
+		this.constraintCacheValid = b;
 	}
-	
+
+	public synchronized void addToNumberOfConstraintTuples(int number) {
+		this.numberOfConstraintTuples += number;
+	}
+
+	public synchronized void addToNumberOfSupportsTuples(int number) {
+		this.numberOfSupportsTuples += number;
+	}
+
 	public synchronized ArrayList<Constraint> getConstraints() {
 
-		while (busy)	{
-			System.out.println("---getConstraints:waiting---");
-		}
-		busy = true;
-		boolean cacheIsValid = this.constraintCacheacheValid;
-		busy = false;
+		boolean cacheIsValid = this.constraintCacheValid;
 		if (!cacheIsValid) {
-//			Set<Constraint> ca = new TreeSet<Constraint>();
 			
 			for (ConstraintCollection cc : rows) {
 				constraintsCache.addAll(cc.getConstraints());			
@@ -134,25 +138,12 @@ public class Instance extends Thread {
 			for (ConstraintCollection cc : cols) {
 				constraintsCache.addAll(cc.getConstraints());			
 			}
-			while (busy)	{
-				System.out.println("---getConstraints:waiting---");
-			}
-			busy = true;
-			this.constraintCacheacheValid = true;
-			busy = false;
-//			constraintsCache.addAll(ca);
-//			ArrayList<Constraint> ca2 = new ArrayList<Constraint>();
-//			for (Constraint constraint : ca2) {
-//				if (!ca2.contains(constraint)) {
-//					ca2.add(constraint);
-//				}
-//			}
-//			constraintsCache.addAll(ca2);
+			this.constraintCacheValid = true;
 		}
 		return constraintsCache;
 	}
 
-	public ArrayList<ConstraintCollection> getConstraintCollections() {
+	public synchronized ArrayList<ConstraintCollection> getConstraintCollections() {
 		ArrayList<ConstraintCollection> cc = new ArrayList<ConstraintCollection>();
 		cc.addAll(rows);
 		cc.addAll(cols);
@@ -164,76 +155,52 @@ public class Instance extends Thread {
 		for (int i = 0; i < solution.length; i++) {
 			if (solution[i]==1) {
 				Constraint c = getConstraints().get(i);
-				if (c.type.equalsIgnoreCase("Z")) {
-					c.draw();
-				}
+				c.setSelected(true);
 			}
 		} 
-	}
-	
-
-//	public void calculatetConstraintsTuples() {
-//		
-//		System.out.println("calculatetConstraintsTuples");
-//		for (int r=0; r<rows.size(); r++) {
-//			ConstraintCollection ccRow = rows.get(r);
-//			for (int i=0; i<ccRow.getConstraintsSize(); i++) {
-//				Constraint cRow = ccRow.getConstraints().get(i);
-//				for (int col=0; col<cols.size(); col++) {
-//					ConstraintCollection ccCol = cols.get(col);
-//					for (int k=0; k<ccCol.getConstraintsSize(); k++) {
-//						Constraint cCol = ccCol.getConstraints().get(k);
-////						if (! (isValidTuple(cRow, r, cCol, col))) {
-//						int result = cRow.checkConstraintSupportType(cCol);
-//						if (result==1 || result==3) {
-//							Constraint[] tuple = new Constraint[2];
-//							tuple[0] = cRow;
-//							tuple[1] = cCol;
-//							constraintTuples.add(tuple);
-//						}
-//					}
-//				}
-//			}
-//		}
-//	}
-
-//	private boolean isValidTuple(Constraint cRow, int row, Constraint cCol, int col) {
-//		ArrayList<Boolean>bListRow = cRow.getBoolValsExt();
-//		ArrayList<Boolean>bListCol = cCol.getBoolValsExt();
-//		boolean bRow = bListRow.get(col).booleanValue();
-//		boolean bCol = bListCol.get(row).booleanValue();
-//		return bRow==bCol;
-//	}
-	public void calculatetConstraintsTuples() {
-		
-		System.out.println("calculatetConstraintsTuples");
-		for (ConstraintCollection row : rows) {
-			System.out.println("row:"+row.index);
-			ArrayList<Constraint> rowConstraints = row.getConstraints();
-			for (Constraint cRow : rowConstraints) {
-				for (ConstraintCollection col : cols) {
-					ArrayList<Constraint> colConstraints = col.getConstraints();
-					for (Constraint cCol : colConstraints) {
-//						if(!cCol.isSelected()){
-						int conSup = cRow.checkConstraintSupportType(cCol);
-						if (conSup==1 || conSup==3) {
-							Constraint[] tuple = new Constraint[2];
-							tuple[0] = cRow;
-							tuple[1] = cCol;
-							constraintTuples.add(tuple);
-						} else if (conSup == 2) {
-							Constraint[] tuple = new Constraint[2];
-							tuple[0] = cRow;
-							tuple[1] = cCol;
-							supportTuples.add(tuple);
-						}
-					}						
+		for (int i = 0; i < rows.size(); i++) {
+			ConstraintCollection cc = getRowByIndex(i+1);
+			for (Constraint c : cc.getConstraints()) {
+				if (c.isSelected) {
+					c.draw();
 				}
 			}
 		}
 	}
+	
+private ConstraintCollection getRowByIndex(int index) {
+	for (ConstraintCollection cc : this.rows) {
+		if (cc.index == index) {
+			return cc;
+		}
+	}
+	return null;
+}
 
-	public void updateConstraintsState(Constraint c) {
+	public void calculatetConstraintsTuplesThreaded() {
+		
+		System.out.println("calculatetConstraintsTuples");
+		ArrayList<OutputThread> tlist = new ArrayList<OutputThread>();
+		int i=0;
+		for (ConstraintCollection row : rows) {
+			System.out.println("row:"+row.index);
+			OutputThread t = new OutputThread(this,i);
+			t.start();
+			tlist.add(t);
+			i++;
+		}
+		
+		for (OutputThread instanceThread : tlist) {
+			try {
+				instanceThread.join();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public synchronized void updateConstraintsState(Constraint c) {
 		ArrayList<ConstraintCollection> ccList;
 		if (c.type.equalsIgnoreCase("Z")) {
 			ccList = cols;
@@ -247,7 +214,7 @@ public class Instance extends Thread {
 		}			
 	}
 	
-	public int checkConstraintsState(Constraint c) {
+	public synchronized int checkConstraintsState(Constraint c) {
 		ArrayList<ConstraintCollection> ccList;
 		if (c.type.equalsIgnoreCase("Z")) {
 			ccList = cols;
@@ -283,49 +250,21 @@ public class Instance extends Thread {
 
 		System.out.println("printVariables");
 
-		int i=0;
-		StringBuffer out = new StringBuffer();
-		out.append(System.getProperty("line.separator"));
+		sbOut.println();
+		sbOut.println( "<variables nbVariables=\""+ getConstraints().size() + "\">");
+
+		sbOut.println();
 		for (Constraint c : getConstraints()) {
-//			if (!c.isSelected) {
-				i++;
-				String sOut = "<variable name=\"" + c.name +"\" domain=\"domT\"/>";
-				out.append(sOut);	
-//			}
+			String sOut = "<variable name=\"" + c.name +"\" domain=\"domT\"/>";
+			sbOut.println(sOut);	
 		} 
-		out.append(System.getProperty("line.separator"));
-		out.append( "</variables>");
-		out.append(System.getProperty("line.separator"));
+		sbOut.println();
+		sbOut.println( "</variables>");
+		sbOut.println();
 
-		sbOut.append(System.getProperty("line.separator"));
-		sbOut.append( "<variables nbVariables=\""+ i + "\">");
-		sbOut.append(out);
 	}
 	
 	
-
-	private int printConstraintsTuples(PrintWriter out) {
-	// <constraint name="C1" arity="2" scope="Z0101 S0102" reference="rel0" />	
-
-		System.out.println("printConstraintsTuples");
-		
-		int iConstraint = 0;
-		out.append(System.getProperty("line.separator"));
-		for (Constraint[] constrTuple : constraintTuples) {
-			iConstraint++;
-			out.append("<constraint name=\"C" + iConstraint + "\" arity=\"2\" scope=\""+ constrTuple[0].name + " " + constrTuple[1].name + "\" reference=\"rel0\" />");			
-		} 
-		out.append(System.getProperty("line.separator"));
-		out.append(System.getProperty("line.separator"));
-		for (Constraint c : this.getConstraints()) {
-			if (c.isSelected) {
-				iConstraint++;
-				out.append("<constraint name=\"S" + iConstraint + "\" arity=\"1\" scope=\""+ c.name  + "\" reference=\"rel1\" />");			
-			}
-		}
-		out.append(System.getProperty("line.separator"));
-		return  iConstraint;
-	}
 	
 
 	private void printRelations(PrintWriter sbOut) {
@@ -335,24 +274,19 @@ public class Instance extends Thread {
 		System.out.println("printRelations");
 
 		int i;
-//		StringBuffer out = new StringBuffer();
-//		i = printNotZeroRelations(out);
 		
 		i = (this.getConstraintCollections().size()+2);
-		sbOut.append(System.getProperty("line.separator"));
-		sbOut.append("<relations nbRelations=\""+ (i+2) +"\">");
-//		sbOut.append("<relations nbRelations=\"1\">");
-		sbOut.append(System.getProperty("line.separator"));
+		sbOut.println();
+		sbOut.println("<relations nbRelations=\""+ (i+2) +"\">");
+		sbOut.println();
 
-		sbOut.append("<relation name=\"rel0\" arity=\"2\" nbTuples=\"1\" semantics=\"conflicts\">1 1</relation>");
-		sbOut.append(System.getProperty("line.separator"));
-		sbOut.append("<relation name=\"rel1\" arity=\"1\" nbTuples=\"1\" semantics=\"supports\">1</relation>");
-		sbOut.append(System.getProperty("line.separator"));
+		sbOut.println("<relation name=\"rel0\" arity=\"2\" nbTuples=\"1\" semantics=\"conflicts\">1 1</relation>");
+		sbOut.println("<relation name=\"rel1\" arity=\"1\" nbTuples=\"1\" semantics=\"supports\">1</relation>");
 
 		printNotZeroRelations(sbOut);
 		
-		sbOut.append("</relations>");
-		sbOut.append(System.getProperty("line.separator"));
+		sbOut.println("</relations>");
+		sbOut.println();
 	}
 	
 	private int printNotZeroRelations(PrintWriter out) {
@@ -371,13 +305,13 @@ public class Instance extends Thread {
 			String relName = "R"+ cc.getConstraintsSize();
 			if (!relHist.contains(relName)) {
 				relHist.add(relName);
-			out.append(" <relation name=\"" + relName +"\" arity=\"" +cc.getConstraintsSize() + 
-					"\" nbTuples=\"1\" semantics=\"conflicts\">"  +System.getProperty("line.separator"));
+			out.println(" <relation name=\"" + relName +"\" arity=\"" +cc.getConstraintsSize() + 
+					"\" nbTuples=\"1\" semantics=\"conflicts\">");
 			i++;
 			for (int j=0; j<cc.getConstraintsSize(); j++) {
 				out.append(0 +" " );
 			}
-			out.append(" </relation>" +System.getProperty("line.separator"));
+			out.println(" </relation>");
 			}
 		}
 		return i;
@@ -389,7 +323,6 @@ public class Instance extends Thread {
 		System.out.println("printNotZeroConstraints");
 		
 		int i=1;
-//		sbOut.append(System.getProperty("line.separator"));
 		out.append(System.getProperty("line.separator"));
 
 		for (ConstraintCollection cc : this.getConstraintCollections()) {
@@ -403,8 +336,6 @@ public class Instance extends Thread {
 			out.append("\" reference=\"R"+ cc.getConstraintsSize() +"\" />" +System.getProperty("line.separator"));
 		} 
 		out.append(System.getProperty("line.separator"));
-	//	sbOut.append("<constraints nbConstraints=\""+ i +"\">");
-//		sbOut.append(out);			
 		return i;
 
 	}
@@ -412,26 +343,49 @@ public class Instance extends Thread {
 	
 	private void printConstraints(PrintWriter sbOut) {
 		int nCon;
-//		nCon = printConstraintsTuples(out);
-//		nCon += printNotZeroConstraints(out);
-		nCon = this.constraintTuples.size()+this.supportTuples.size()+this.getConstraintCollections().size();
+		nCon = this.numberOfConstraintTuples+this.numberOfSupportsTuples+this.getConstraintCollections().size();
 		
-//		sbOut.append(System.getProperty("line.separator"));
 		sbOut.append("<constraints nbConstraints=\""+ nCon +"\">");
-//		sbOut.append("<constraints nbConstraints=\"1\">");
-//		sbOut.append(out);
-		printConstraintsTuples(sbOut);
+
+		for (int i = 0; i < rows.size(); i++) {
+			String sConstraintFile = "/Volumes/Raid0/_to_delete/nonocsp-constraint-"+rows.get(i).type +rows.get(i).index+".xml";
+			File constraintFile = new File(sConstraintFile);
+			if (constraintFile.exists()) {
+				appendContent(constraintFile, sbOut);
+			}
+		}
+		for (int i = 0; i < rows.size(); i++) {
+			String sSupportsFile = "/Volumes/Raid0/_to_delete/nonocsp-support-"+rows.get(i).type +rows.get(i).index+".xml";
+			File supportsFile = new File(sSupportsFile);
+			if (supportsFile.exists()) {
+				appendContent(supportsFile, sbOut);
+			}			
+		}
+		
 		printNotZeroConstraints(sbOut);
 		sbOut.append("</constraints>");
 	}
 	
-//	private boolean isValidTuple(Constraint cRow, int row, Constraint cSize, int col) {
-//		ArrayList<Boolean>bListRow = cRow.getBoolValsExt();
-//		ArrayList<Boolean>bListCol = cSize.getBoolValsExt();
-//		boolean bRow = bListRow.get(col).booleanValue();
-//		boolean bCol = bListCol.get(row).booleanValue();
-//		return bRow==bCol;
-//	}		
+	private static void appendContent(File inFile, PrintWriter out){
+		  
+		try {
+
+			FileInputStream fstream = new FileInputStream(inFile);
+			DataInputStream in = new DataInputStream(fstream);
+			BufferedReader br = new BufferedReader(new InputStreamReader(in));
+			
+			String strLine;
+			//Read File Line By Line
+			while ((strLine = br.readLine()) != null)   {
+			  out.println(strLine);
+			}
+			
+			//Close the input stream
+			in.close();
+			    }catch (Exception e){//Catch exception if any
+			  System.err.println("Error: " + e.getMessage());
+			  }		  
+		  }
 
 
 	public void writeCsp(PrintWriter pw) {
@@ -449,16 +403,6 @@ public class Instance extends Thread {
 //		</instance>
 		System.out.println("writeCsp");
 
-//		sbOut.append("<instance>"+System.getProperty("line.separator"));
-//		sbOut.append("<presentation  name=\"Nonogram\"  nbSolutions=\"?\"  format=\"XCSP 2.0\">"+System.getProperty("line.separator"));
-//		sbOut.append("csp representation for nonograms"+System.getProperty("line.separator"));
-//		sbOut.append("</presentation>"+System.getProperty("line.separator"));
-//		sbOut.append("<domains nbDomains=\"1\">"+System.getProperty("line.separator"));
-//		sbOut.append("<domain name=\"domT\" nbValues=\"2\">"+System.getProperty("line.separator"));
-//		sbOut.append(" 0..1"+System.getProperty("line.separator"));
-//		sbOut.append("</domain>"+System.getProperty("line.separator"));
-//		sbOut.append("</domains>"+System.getProperty("line.separator"));
-		
 		pw.println("<instance>");
 		pw.println("<presentation  name=\"Nonogram\"  nbSolutions=\"?\"  format=\"XCSP 2.0\">"+System.getProperty("line.separator"));
 		pw.println("csp representation for nonograms");
@@ -477,19 +421,4 @@ public class Instance extends Thread {
 		
 	}
 	
-	
-//	 public void writeToFile (String fileName) {
-//			System.out.println("writeToFile:" +fileName);
-//
-//		 try {
-//	    	  BufferedWriter out = new BufferedWriter(
-//	    	                       new FileWriter(fileName));
-//	    	  String outText = sbOut.toString();
-//	    	  out.write(outText);
-//	    	  out.close();
-//	    } catch (IOException ioe) {
-//	        ioe.printStackTrace();
-//	    }
-//	 }
-
 }

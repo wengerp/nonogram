@@ -31,7 +31,6 @@ public class ConstraintCollection implements Comparable<ConstraintCollection>{
 		} else {
 			this.prio = index;
 		}
-//		createConstraints();
 	}
 	
 	public String toString() {
@@ -39,22 +38,11 @@ public class ConstraintCollection implements Comparable<ConstraintCollection>{
 	}
 
 	public void addConstraint(Constraint c) {
-//		int nConstr = getConstraintsSize();
-//		if (nConstr==0) {
-//			c.setSelected(true);
-//		} else if (nConstr==1) {
-//			c.setSelected(false);
-//			this.constraints.get(0).setSelected(false);
-//		} else {
-//			c.setSelected(false);
-//		}
 		this.constraints.add(c);
 		
-		// @@@
-//		this.instance.updateConstraintsState(c);
 	}
 	
-	public void createConstraints() {
+	public  void createConstraints() {
 
 		int sumProcessedRules = 0;
 		int sumAllRules = getSumRemainingRules(-1)+1; 
@@ -64,7 +52,6 @@ public class ConstraintCollection implements Comparable<ConstraintCollection>{
 			selectedConstraint.setSelected(true);
 			System.out.println("--- Created Selected Constraint:"+selectedConstraint);
 			this.addConstraint(selectedConstraint);
-//			this.instance.updateConstraintsState(selectedConstraint);
 		} else {
 			ArrayList<ArrayList<Constraint>> valueCandidates = new ArrayList<ArrayList<Constraint>>();
 			for (int i=0; i<rules.size(); i++) {
@@ -81,28 +68,11 @@ public class ConstraintCollection implements Comparable<ConstraintCollection>{
 			ArrayList<Constraint> it = new ArrayList<Constraint>();
 			generateConstraints(0, it, valueCandidates);
 		}
-		
+		this.candidates.clear();
+		this.candidates = null;
 		return;
 	}
 
-//	private void createCandidates(int rule,int sumProcessedRules, int sumRemainingRules) {
-//	
-//		for (int p=sumProcessedRules; p<=length+2-(rule+2+sumRemainingRules); p++) {
-//			Constraint candidate = new Constraint(this, this.name+String.format("%02d",(this.constraints.size()+1)),this.type,this.index,this.rules,this.length);
-//			
-//			// first 
-//			candidate.setBoolVal(p,new Boolean(false));
-//			
-//			// middle
-//			for (int j=0; j<rule; j++) {
-//				candidate.setBoolVal(p+j+1,new Boolean(true));				}
-//	
-//			// last
-//			candidate.setBoolVal(p+rule+1,new Boolean(false));
-//			this.constraints.add(candidate);
-//		}
-//		
-//	}
 
 	private ArrayList<Constraint> createCandidates(int rule,int sumProcessedRules, int sumRemainingRules) {
 		ArrayList<Constraint> result = new ArrayList<Constraint>();
@@ -150,8 +120,6 @@ public class ConstraintCollection implements Comparable<ConstraintCollection>{
 				if (lastfree-firstfree>=0) {
 					copyCandidateKomb.add(nextCandidate);
 					generateConstraints(d + 1, copyCandidateKomb, candidatesList);
-				} else {
-//						this.candidates.remove(nextCandidate);
 				}
 			} else {
 				copyCandidateKomb.add(nextCandidate);
@@ -181,7 +149,6 @@ public class ConstraintCollection implements Comparable<ConstraintCollection>{
 		for (Constraint candidate : this.candidates) {
 			int conSup = candidate.checkConstraintSupportType(c);
 			if (conSup == 3) {
-//				System.out.println("----- updating cc for candidate:"+candidate);
 				while (busy)	{
 					System.out.println("---cc:updateConstraintsState---");
 				}
@@ -232,15 +199,6 @@ public class ConstraintCollection implements Comparable<ConstraintCollection>{
 	@Override
 	public int compareTo(ConstraintCollection cc) {
 		return ((new Double(this.prio)).compareTo(new Double(cc.prio)) *-1);
-		
-		//		if (cc == null) 
-//			return -1;
-//		if (this.prio>cc.prio)
-//			return -1;
-//		else if (cc.prio>this.prio)
-//			return 1;
-//		else
-//			return 0;
 	}
 
 	@Override
